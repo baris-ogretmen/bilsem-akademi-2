@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BİLSEM Akademi: Süper Zeka Platformu</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;600&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            color: #fff;
+            overflow-x: hidden;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .title-font {
+            font-family: 'Fredoka', sans-serif;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .glass-btn {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        .glass-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        .game-card {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        .game-card:hover {
+            transform: translateY(-8px) scale(1.03);
+            box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.5);
+            border-color: rgba(255,255,255,0.3);
+        }
+        
+        /* Grid & Animations */
+        .grid-cell { transition: all 0.2s; cursor: pointer; }
+        .grid-cell.active { background-color: #fbbf24 !important; box-shadow: 0 0 20px #fbbf24; transform: scale(0.95); }
+        .grid-cell.correct { background-color: #4ade80 !important; box-shadow: 0 0 15px #4ade80; }
+        .grid-cell.wrong { background-color: #f87171 !important; animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        
+        /* Robot Coding Specific Styles */
+        .coding-grid-cell {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .robot-avatar {
+            transition: all 0.3s ease-in-out;
+            z-index: 10;
+        }
+        
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        #confetti-canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 9999;
+        }
+        .rank-badge { animation: float 3s ease-in-out infinite; }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+            100% { transform: translateY(0px); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-3 md:p-6 text-gray-100">
+
+    <canvas id="confetti-canvas"></canvas>
+
+    <!-- Header & Stats -->
+    <header class="w-full max-w-6xl flex flex-col md:flex-row justify-between items-center mb-8 gap-4 glass-panel p-4 sticky top-2 z-40">
+        <div class="flex items-center gap-4 w-full md:w-auto">
+            <div id="rank-icon" class="w-14 h-14 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-yellow-400 to-orange-600 flex items-center justify-center text-3xl shadow-xl border-4 border-gray-800 rank-badge">
+                👶
+            </div>
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold title-font bg-clip-text text-transparent bg-gradient-to-r from-cyan-300 to-blue-200">
+                    BİLSEM AKADEMİ
+                </h1>
+                <div class="flex items-center gap-2">
+                    <span id="rank-name" class="text-xs md:text-sm font-bold text-yellow-400 uppercase tracking-wider bg-yellow-400/10 px-2 py-0.5 rounded">Başlangıç</span>
+                    <span class="text-xs text-gray-400">Seviye <span id="global-level">1</span></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3 md:gap-6 w-full md:w-auto justify-between md:justify-end">
+            <div class="text-center px-4 py-1 bg-white/5 rounded-lg border border-white/5">
+                <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">TOPLAM SKOR</p>
+                <p id="total-score" class="text-2xl font-black text-white title-font">0</p>
+            </div>
+            
+            <div class="flex gap-2">
+                <button onclick="app.resetProgress()" class="glass-btn w-10 h-10 rounded-full flex items-center justify-center text-red-400" title="Sıfırla">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+                <button onclick="app.showReport()" class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-4 py-2 rounded-xl shadow-lg shadow-purple-900/20 font-bold text-sm flex items-center gap-2 transition transform active:scale-95">
+                    <i class="fa-solid fa-chart-pie"></i> <span class="hidden md:inline">Veli Raporu</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Menu -->
+    <main id="menu-screen" class="w-full max-w-6xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 pb-10">
+        
+        <!-- Game 1: Visual Memory -->
+        <div onclick="app.startGame('memory')" class="game-card glass-panel p-6 flex flex-col items-center text-center gap-3 group relative">
+            <div class="absolute top-2 right-2 text-xs font-bold bg-gray-800/50 px-2 py-1 rounded text-gray-400 group-hover:text-blue-300 transition">Lv. <span id="lvl-memory">1</span></div>
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-3xl shadow-lg shadow-blue-500/20 mb-2">
+                🧩
+            </div>
+            <h3 class="text-lg font-bold title-font">Hafıza Matrisi</h3>
+            <p class="text-xs text-gray-300 leading-relaxed">Karelerin yerini unutma, görsel belleğini güçlendir.</p>
+        </div>
+
+        <!-- Game 2: Auditory Memory -->
+        <div onclick="app.startGame('audio')" class="game-card glass-panel p-6 flex flex-col items-center text-center gap-3 group relative">
+             <div class="absolute top-2 right-2 text-xs font-bold bg-gray-800/50 px-2 py-1 rounded text-gray-400 group-hover:text-pink-300 transition">Lv. <span id="lvl-audio">1</span></div>
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center text-3xl shadow-lg shadow-pink-500/20 mb-2">
+                🎧
+            </div>
+            <h3 class="text-lg font-bold title-font">İşitsel Hafıza</h3>
+            <p class="text-xs text-gray-300 leading-relaxed">Duyduğun sayıları sırasıyla aklında tut.</p>
+        </div>
+
+        <!-- Game 3: Logic -->
+        <div onclick="app.startGame('logic')" class="game-card glass-panel p-6 flex flex-col items-center text-center gap-3 group relative">
+             <div class="absolute top-2 right-2 text-xs font-bold bg-gray-800/50 px-2 py-1 rounded text-gray-400 group-hover:text-purple-300 transition">Lv. <span id="lvl-logic">1</span></div>
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-3xl shadow-lg shadow-purple-500/20 mb-2">
+                🔢
+            </div>
+            <h3 class="text-lg font-bold title-font">Mantık Şifresi</h3>
+            <p class="text-xs text-gray-300 leading-relaxed">Örüntüleri ve sayı dizilerini çöz, şifreyi kır.</p>
+        </div>
+
+        <!-- Game 4: Spatial -->
+        <div onclick="app.startGame('spatial')" class="game-card glass-panel p-6 flex flex-col items-center text-center gap-3 group relative">
+             <div class="absolute top-2 right-2 text-xs font-bold bg-gray-800/50 px-2 py-1 rounded text-gray-400 group-hover:text-emerald-300 transition">Lv. <span id="lvl-spatial">1</span></div>
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center text-3xl shadow-lg shadow-emerald-500/20 mb-2">
+                🧊
+            </div>
+            <h3 class="text-lg font-bold title-font">Küp Çevirmece</h3>
+            <p class="text-xs text-gray-300 leading-relaxed">Şekilleri zihninde döndür, uzamsal zekanı test et.</p>
+        </div>
+
+        <!-- Game 5: Attention -->
+        <div onclick="app.startGame('attention')" class="game-card glass-panel p-6 flex flex-col items-center text-center gap-3 group relative">
+             <div class="absolute top-2 right-2 text-xs font-bold bg-gray-800/50 px-2 py-1 rounded text-gray-400 group-hover:text-red-300 transition">Lv. <span id="lvl-attention">1</span></div>
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500 to-orange-600 flex items-center justify-center text-3xl shadow-lg shadow-red-500/20 mb-2">
+                ⚡
+            </div>
+            <h3 class="text-lg font-bold title-font">Süper Refleks</h3>
+            <p class="text-xs text-gray-300 leading-relaxed">Renkler ve kelimeler seni kandırmasın!</p>
+        </div>
+
+        <!-- Game 6: Robotic Coding (NEW) -->
+        <div onclick="app.startGame('coding')" class="game-card glass-panel p-6 flex flex-col items-center text-center gap-3 group relative">
+             <div class="absolute top-2 right-2 text-xs font-bold bg-gray-800/50 px-2 py-1 rounded text-gray-400 group-hover:text-cyan-300 transition">Lv. <span id="lvl-coding">1</span></div>
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-sky-600 flex items-center justify-center text-3xl shadow-lg shadow-cyan-500/20 mb-2">
+                🤖
+            </div>
+            <h3 class="text-lg font-bold title-font">Robotik Kodlama</h3>
+            <p class="text-xs text-gray-300 leading-relaxed">Komutları sırala, robotu hedefe ulaştır.</p>
+        </div>
+
+    </main>
+
+    <!-- Game Playing Area -->
+    <div id="game-container" class="hidden w-full max-w-4xl glass-panel p-4 md:p-8 flex-col relative min-h-[500px]">
+        
+        <!-- Game Header -->
+        <div class="flex justify-between items-center mb-6 pb-4 border-b border-white/10">
+            <button onclick="app.returnMenu()" class="text-gray-400 hover:text-white flex items-center gap-2 font-semibold transition">
+                <i class="fa-solid fa-chevron-left"></i> Menü
+            </button>
+            <div class="flex items-center gap-4">
+                <div class="flex flex-col items-end">
+                    <span class="text-xs text-gray-400 uppercase">Seviye</span>
+                    <span id="game-level-disp" class="text-xl font-bold text-blue-300 leading-none">1</span>
+                </div>
+                <div class="w-px h-8 bg-white/10"></div>
+                 <div class="flex flex-col items-end">
+                    <span class="text-xs text-gray-400 uppercase">Oyun Puanı</span>
+                    <span id="game-score-disp" class="text-xl font-bold text-yellow-400 leading-none">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dynamic Game Board -->
+        <div id="game-board" class="flex-grow flex flex-col items-center justify-center relative w-full">
+            <!-- Content Injected Here -->
+        </div>
+
+        <!-- Feedback Overlay -->
+        <div id="feedback-msg" class="absolute inset-0 flex items-center justify-center pointer-events-none z-50 transition-opacity duration-300 opacity-0">
+            <div class="bg-black/80 backdrop-blur px-8 py-4 rounded-2xl border border-white/20 transform scale-110">
+                <h2 class="text-3xl font-bold title-font text-white"></h2>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Parent Report Modal -->
+    <div id="report-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] hidden flex items-center justify-center p-4">
+        <div class="bg-gray-900 w-full max-w-2xl rounded-3xl border border-gray-700 p-6 md:p-8 relative shadow-2xl overflow-y-auto max-h-[90vh]">
+            <button onclick="document.getElementById('report-modal').classList.add('hidden')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition">
+                <i class="fa-solid fa-times"></i>
+            </button>
+            
+            <div class="flex items-center gap-3 mb-6">
+                <i class="fa-solid fa-graduation-cap text-3xl text-yellow-400"></i>
+                <div>
+                    <h2 class="text-2xl font-bold text-white title-font">Öğrenci Gelişim Karnesi</h2>
+                    <p class="text-xs text-gray-400">Veriler tarayıcı hafızasında saklanmaktadır.</p>
+                </div>
+            </div>
+
+            <!-- Stats Bars -->
+            <div class="space-y-5">
+                <div class="space-y-1">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-blue-300 font-medium"><i class="fa-solid fa-puzzle-piece mr-2"></i>Görsel Hafıza</span>
+                        <span class="text-white font-bold" id="stat-memory">0</span>
+                    </div>
+                    <div class="h-3 w-full bg-gray-800 rounded-full overflow-hidden">
+                        <div id="bar-memory" class="h-full bg-blue-500 rounded-full transition-all duration-1000 w-0"></div>
+                    </div>
+                </div>
+
+                 <div class="space-y-1">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-pink-300 font-medium"><i class="fa-solid fa-headphones mr-2"></i>İşitsel Hafıza</span>
+                        <span class="text-white font-bold" id="stat-audio">0</span>
+                    </div>
+                    <div class="h-3 w-full bg-gray-800 rounded-full overflow-hidden">
+                        <div id="bar-audio" class="h-full bg-pink-500 rounded-full transition-all duration-1000 w-0"></div>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-cyan-300 font-medium"><i class="fa-solid fa-robot mr-2"></i>Robotik Kodlama</span>
+                        <span class="text-white font-bold" id="stat-coding">0</span>
+                    </div>
+                    <div class="h-3 w-full bg-gray-800 rounded-full overflow-hidden">
+                        <div id="bar-coding" class="h-full bg-cyan-500 rounded-full transition-all duration-1000 w-0"></div>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-purple-300 font-medium"><i class="fa-solid fa-calculator mr-2"></i>Mantıksal Muhakeme</span>
+                        <span class="text-white font-bold" id="stat-logic">0</span>
+                    </div>
+                    <div class="h-3 w-full bg-gray-800 rounded-full overflow-hidden">
+                        <div id="bar-logic" class="h-full bg-purple-500 rounded-full transition-all duration-1000 w-0"></div>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-emerald-300 font-medium"><i class="fa-solid fa-cubes mr-2"></i>Uzamsal Algı</span>
+                        <span class="text-white font-bold" id="stat-spatial">0</span>
+                    </div>
+                    <div class="h-3 w-full bg-gray-800 rounded-full overflow-hidden">
+                        <div id="bar-spatial" class="h-full bg-emerald-500 rounded-full transition-all duration-1000 w-0"></div>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-red-300 font-medium"><i class="fa-solid fa-bolt mr-2"></i>Dikkat & Odak</span>
+                        <span class="text-white font-bold" id="stat-attention">0</span>
+                    </div>
+                    <div class="h-3 w-full bg-gray-800 rounded-full overflow-hidden">
+                        <div id="bar-attention" class="h-full bg-red-500 rounded-full transition-all duration-1000 w-0"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Suggestion Box -->
+            <div class="mt-8 bg-gradient-to-br from-indigo-900/50 to-gray-800 p-5 rounded-xl border border-indigo-500/20">
+                <h4 class="font-bold text-yellow-400 mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-robot"></i> Sistem Analizi
+                </h4>
+                <p id="ai-suggestion" class="text-sm text-gray-300 leading-relaxed italic">
+                    Henüz yeterli veri girişi yapılmadı. Lütfen çocuğunuzun tüm kategorilerde en az 5'er oyun oynamasını sağlayın.
+                </p>
+            </div>
+            
+            <div class="mt-6 text-center">
+                 <button onclick="window.print()" class="text-xs text-gray-500 hover:text-white underline">Raporu Yazdır</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // --- Confetti Engine ---
+        const confetti = {
+            start: (duration = 1500) => {
+                const canvas = document.getElementById('confetti-canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                
+                let particles = [];
+                const colors = ['#f43f5e', '#3b82f6', '#22c55e', '#eab308', '#a855f7'];
+                
+                for(let i=0; i<150; i++) {
+                    particles.push({
+                        x: window.innerWidth/2, y: window.innerHeight/2,
+                        vx: (Math.random()-0.5)*20, vy: (Math.random()-0.5)*20,
+                        c: colors[Math.floor(Math.random()*colors.length)],
+                        s: Math.random()*10+5, l: 100 // life
+                    });
+                }
+                
+                function draw() {
+                    ctx.clearRect(0,0,canvas.width,canvas.height);
+                    let active = false;
+                    particles.forEach(p => {
+                        if(p.l > 0) {
+                            active = true;
+                            p.x += p.vx; p.y += p.vy; p.vy += 0.5; p.l--;
+                            ctx.fillStyle = p.c;
+                            ctx.globalAlpha = p.l/100;
+                            ctx.fillRect(p.x, p.y, p.s, p.s);
+                        }
+                    });
+                    if(active) requestAnimationFrame(draw);
+                    else ctx.clearRect(0,0,canvas.width,canvas.height);
+                }
+                draw();
+            }
+        };
+
+        // --- Core Application Logic ---
+        const app = {
+            stats: { memory: 0, audio: 0, logic: 0, spatial: 0, attention: 0, coding: 0 },
+            ranks: [
+                { s: 0, t: 'Çırak', i: '👶' },
+                { s: 200, t: 'Kaşif', i: '🔭' },
+                { s: 500, t: 'Bilgin', i: '🦉' },
+                { s: 1000, t: 'Usta', i: '🎓' },
+                { s: 2000, t: 'Dahi', i: '🧠' },
+                { s: 5000, t: 'Efsane', i: '👑' }
+            ],
+            activeGame: null,
+            level: 1,
+
+            init() {
+                this.loadProgress();
+                this.updateGlobalUI();
+                if (!window.speechSynthesis) {
+                    alert("Tarayıcınız sesli okuma özelliğini desteklemiyor. İşitsel hafıza oyunu çalışmayabilir.");
+                }
+            },
+
+            loadProgress() {
+                const saved = localStorage.getItem('bilsem_stats_v3'); // Updated storage key
+                if(saved) this.stats = JSON.parse(saved);
+                // Ensure coding key exists if loaded from old version
+                if(typeof this.stats.coding === 'undefined') this.stats.coding = 0;
+            },
+
+            saveProgress() {
+                localStorage.setItem('bilsem_stats_v3', JSON.stringify(this.stats));
+                this.updateGlobalUI();
+            },
+
+            resetProgress() {
+                if(confirm("Tüm ilerleme ve skorlar silinecek. Emin misin?")) {
+                    this.stats = { memory: 0, audio: 0, logic: 0, spatial: 0, attention: 0, coding: 0 };
+                    this.saveProgress();
+                    location.reload();
+                }
+            },
+
+            getTotalScore() {
+                return Object.values(this.stats).reduce((a,b) => a+b, 0);
+            },
+
+            getRank() {
+                const s = this.getTotalScore();
+                return this.ranks.slice().reverse().find(r => s >= r.s) || this.ranks[0];
+            },
+
+            updateGlobalUI() {
+                const total = this.getTotalScore();
+                const rank = this.getRank();
+                
+                document.getElementById('total-score').innerText = total;
+                document.getElementById('rank-name').innerText = rank.t;
+                document.getElementById('rank-icon').innerText = rank.i;
+                document.getElementById('global-level').innerText = Math.floor(total/100) + 1;
+
+                ['memory', 'audio', 'logic', 'spatial', 'attention', 'coding'].forEach(key => {
+                    const lvl = Math.floor(this.stats[key]/50) + 1;
+                    const el = document.getElementById(`lvl-${key}`);
+                    if(el) el.innerText = lvl;
+                });
+            },
+
+            startGame(type) {
+                document.getElementById('menu-screen').classList.add('hidden');
+                document.getElementById('game-container').classList.remove('hidden');
+                document.getElementById('game-container').classList.add('flex');
+                
+                this.activeGame = type;
+                this.level = Math.floor(this.stats[type] / 50) + 1;
+                
+                this.updateInGameUI();
+                this.games[type].init(this.level);
+            },
+
+            returnMenu() {
+                document.getElementById('game-container').classList.add('hidden');
+                document.getElementById('game-container').classList.remove('flex');
+                document.getElementById('menu-screen').classList.remove('hidden');
+                window.speechSynthesis.cancel();
+                this.updateGlobalUI();
+            },
+
+            updateInGameUI() {
+                document.getElementById('game-level-disp').innerText = this.level;
+                document.getElementById('game-score-disp').innerText = this.stats[this.activeGame];
+            },
+
+            showFeedback(success, msg) {
+                const overlay = document.getElementById('feedback-msg');
+                const title = overlay.querySelector('h2');
+                
+                if(success) {
+                    this.stats[this.activeGame] += 10 + (this.level * 2);
+                    this.saveProgress();
+                    this.updateInGameUI();
+                    confetti.start();
+                    title.innerText = msg || "HARİKA!";
+                    title.className = "text-3xl font-bold title-font text-green-400";
+                    
+                    this.playTone(600, 0.1, 'sine');
+                    setTimeout(() => this.playTone(800, 0.2, 'sine'), 100);
+
+                    const newLevel = Math.floor(this.stats[this.activeGame] / 50) + 1;
+                    if(newLevel > this.level) {
+                        this.level = newLevel;
+                        setTimeout(() => alert(`TEBRİKLER! Seviye ${this.level} oldun! 🚀`), 500);
+                    }
+                } else {
+                    title.innerText = msg || "TEKRAR DENE";
+                    title.className = "text-3xl font-bold title-font text-red-400";
+                    this.playTone(200, 0.3, 'sawtooth');
+                }
+
+                overlay.style.opacity = '1';
+                setTimeout(() => { overlay.style.opacity = '0'; }, 1200);
+            },
+            
+            playTone(freq, dur, type) {
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.value = freq;
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start();
+                    gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + dur);
+                    setTimeout(() => ctx.close(), dur * 1000);
+                } catch(e){}
+            },
+
+            showReport() {
+                document.getElementById('report-modal').classList.remove('hidden');
+                const max = 200; 
+                
+                ['memory', 'audio', 'logic', 'spatial', 'attention', 'coding'].forEach(k => {
+                    const val = this.stats[k];
+                    document.getElementById(`stat-${k}`).innerText = val;
+                    const pct = Math.min((val/max)*100, 100);
+                    document.getElementById(`bar-${k}`).style.width = `${pct}%`;
+                });
+
+                const entries = Object.entries(this.stats).sort((a,b) => b[1]-a[1]);
+                const top = entries[0];
+                const low = entries[entries.length-1];
+                let msg = "";
+                
+                if(top[1] < 20) {
+                    msg = "Analiz için daha fazla oyun oynanması gerekiyor. Şu an öğrenme aşamasındasınız.";
+                } else {
+                    const map = {memory:'Görsel Hafıza', audio:'İşitsel Hafıza', logic:'Mantık', spatial:'Uzamsal', attention:'Dikkat', coding:'Algoritmik Düşünme'};
+                    msg = `Harika bir performans! Çocuğunuzun **${map[top[0]]}** alanı çok güçlü görünüyor (${top[1]} Puan). `;
+                    msg += `Dengeyi sağlamak için **${map[low[0]]}** egzersizlerine (${low[1]} Puan) biraz daha ağırlık verebilirsiniz.`;
+                    
+                    if(low[0] === 'coding') msg += " Algoritmik düşünme becerisi için robotik kodlama bölümünde 'hata ayıklama' üzerine konuşabilirsiniz.";
+                }
+                document.getElementById('ai-suggestion').innerHTML = msg;
+            },
+
+            // --- GAME ENGINES ---
+            games: {
+                // 1. VISUAL MEMORY
+                memory: {
+                    init(level) {
+                        const board = document.getElementById('game-board');
+                        board.innerHTML = '';
+                        let gridSize = 3;
+                        if(level > 5) gridSize = 4;
+                        if(level > 10) gridSize = 5;
+                        let targetCount = 3 + Math.floor(level/2);
+                        if(targetCount > gridSize*gridSize - 2) targetCount = gridSize*gridSize - 2;
+
+                        const grid = document.createElement('div');
+                        grid.className = 'grid gap-3 bg-white/5 p-4 rounded-xl shadow-inner border border-white/5';
+                        grid.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+                        
+                        const cells = [];
+                        const targets = [];
+                        for(let i=0; i<gridSize*gridSize; i++) {
+                            const d = document.createElement('div');
+                            d.className = 'grid-cell w-16 h-16 md:w-20 md:h-20 bg-blue-900/40 rounded-lg border border-white/10';
+                            d.dataset.id = i;
+                            cells.push(d);
+                            grid.appendChild(d);
+                        }
+                        
+                        const info = document.createElement('div');
+                        info.className = "mt-6 text-xl font-bold text-blue-300 animate-pulse";
+                        info.innerText = "Kareleri İzle...";
+                        board.appendChild(grid);
+                        board.appendChild(info);
+
+                        while(targets.length < targetCount) {
+                            const r = Math.floor(Math.random() * (gridSize*gridSize));
+                            if(!targets.includes(r)) targets.push(r);
+                        }
+
+                        setTimeout(() => {
+                            targets.forEach(idx => cells[idx].classList.add('active'));
+                            setTimeout(() => {
+                                targets.forEach(idx => cells[idx].classList.remove('active'));
+                                info.innerText = "Sıra Sende! Hepsini Bul.";
+                                info.classList.remove('animate-pulse');
+                                info.classList.add('text-white');
+                                let found = 0;
+                                let mistakes = 0;
+                                const maxMistakes = level > 5 ? 1 : 2;
+
+                                cells.forEach((cell, idx) => {
+                                    cell.onclick = () => {
+                                        if(cell.classList.contains('correct') || cell.classList.contains('wrong')) return;
+                                        if(targets.includes(idx)) {
+                                            cell.classList.add('correct');
+                                            found++;
+                                            if(found === targets.length) {
+                                                setTimeout(() => app.showFeedback(true), 500);
+                                                setTimeout(() => this.init(app.level), 1500);
+                                            }
+                                        } else {
+                                            cell.classList.add('wrong');
+                                            mistakes++;
+                                            if(mistakes >= maxMistakes) {
+                                                targets.forEach(t => cells[t].classList.add('active'));
+                                                setTimeout(() => app.showFeedback(false), 800);
+                                                setTimeout(() => this.init(app.level), 2000);
+                                            }
+                                        }
+                                    };
+                                });
+                            }, 1500 + (level * 100));
+                        }, 500);
+                    }
+                },
+
+                // 2. AUDITORY MEMORY
+                audio: {
+                    seq: [],
+                    init(level) {
+                        const board = document.getElementById('game-board');
+                        board.innerHTML = `
+                            <div class="flex flex-col items-center gap-6">
+                                <div class="w-32 h-32 rounded-full bg-pink-500/20 flex items-center justify-center animate-pulse border-4 border-pink-500/50">
+                                    <i class="fa-solid fa-volume-high text-5xl text-pink-400"></i>
+                                </div>
+                                <p id="audio-status" class="text-xl font-bold text-gray-300">Dinleniyor...</p>
+                                <div id="audio-options" class="grid grid-cols-3 gap-4 opacity-50 pointer-events-none transition-opacity">
+                                    ${[1,2,3,4,5,6,7,8,9].map(n => `<button class="w-16 h-16 bg-gray-700 hover:bg-pink-600 rounded-xl text-2xl font-bold transition border border-white/10" onclick="app.games.audio.check(${n})">${n}</button>`).join('')}
+                                </div>
+                            </div>
+                        `;
+                        const len = 3 + Math.floor(level/3);
+                        this.seq = [];
+                        for(let i=0; i<len; i++) this.seq.push(Math.floor(Math.random()*9)+1);
+                        this.userIdx = 0;
+                        this.playSequence(0);
+                    },
+                    playSequence(idx) {
+                        if(idx >= this.seq.length) {
+                            document.getElementById('audio-status').innerText = "Sırasıyla Tuşla!";
+                            document.getElementById('audio-options').classList.remove('opacity-50', 'pointer-events-none');
+                            return;
+                        }
+                        const num = this.seq[idx];
+                        const u = new SpeechSynthesisUtterance(num.toString());
+                        u.lang = 'tr-TR';
+                        u.rate = 0.8; 
+                        window.speechSynthesis.speak(u);
+                        u.onend = () => { setTimeout(() => this.playSequence(idx+1), 800); };
+                    },
+                    check(val) {
+                        if(val === this.seq[this.userIdx]) {
+                            this.userIdx++;
+                            if(this.userIdx >= this.seq.length) {
+                                setTimeout(() => app.showFeedback(true, "MÜKEMMEL KULAK!"), 200);
+                                setTimeout(() => this.init(app.level), 1500);
+                            }
+                        } else {
+                            app.showFeedback(false, `Doğrusu: ${this.seq.join('-')}`);
+                            setTimeout(() => this.init(app.level), 2000);
+                        }
+                    }
+                },
+
+                // 3. LOGIC
+                logic: {
+                    init(level) {
+                        const board = document.getElementById('game-board');
+                        const mode = Math.random() > 0.5 ? 'number' : 'matrix';
+                        if(mode === 'number') this.numberGame(board, level);
+                        else this.matrixGame(board, level);
+                    },
+                    numberGame(board, level) {
+                        const start = Math.floor(Math.random()*10)+1;
+                        const step = Math.floor(Math.random()*level) + 2;
+                        const seq = [start, start+step, start+(step*2), "?"];
+                        const ans = start+(step*3);
+                        const opts = [ans, ans+step, ans-1, ans+2].sort(()=>Math.random()-0.5);
+                        board.innerHTML = `
+                             <div class="flex flex-col items-center gap-8 w-full">
+                                <h3 class="text-gray-400 text-sm uppercase tracking-widest">Soru İşareti Yerine Ne Gelmeli?</h3>
+                                <div class="flex gap-3 md:gap-6">
+                                    ${seq.map(s => `<div class="w-16 h-16 md:w-20 md:h-20 flex items-center justify-center ${s==='?' ? 'bg-gray-800 border-dashed border-2 border-gray-500' : 'bg-purple-600'} rounded-2xl text-2xl font-bold shadow-xl">${s}</div>`).join('')}
+                                </div>
+                                <div class="grid grid-cols-2 gap-4 mt-4">
+                                    ${opts.map(o => `<button onclick="app.games.logic.handle(${o==ans})" class="bg-white/10 hover:bg-white/20 px-8 py-4 rounded-xl text-xl font-bold border border-white/10 w-32 transition hover:scale-105">${o}</button>`).join('')}
+                                </div>
+                            </div>
+                        `;
+                    },
+                    matrixGame(board, level) {
+                        const shapes = ['square', 'circle', 'play', 'star', 'heart'];
+                        const colors = ['text-purple-500', 'text-yellow-500', 'text-cyan-500'];
+                        const s1 = shapes[Math.floor(Math.random()*shapes.length)];
+                        const s2 = shapes[Math.floor(Math.random()*shapes.length)];
+                        const c1 = colors[Math.floor(Math.random()*colors.length)];
+                        const c2 = colors[Math.floor(Math.random()*colors.length)];
+                        const qHtml = `
+                             <div class="flex flex-col items-center gap-6">
+                                <h3 class="text-gray-400 text-sm uppercase tracking-widest">Matrisi Tamamla</h3>
+                                <div class="grid grid-cols-2 gap-2 p-4 bg-white/5 rounded-2xl">
+                                    <div class="w-20 h-20 bg-gray-800 rounded-lg flex items-center justify-center"><i class="fa-solid fa-${s1} ${c1} text-4xl"></i></div>
+                                    <div class="w-20 h-20 bg-gray-800 rounded-lg flex items-center justify-center"><i class="fa-solid fa-${s2} ${c2} text-4xl"></i></div>
+                                    <div class="w-20 h-20 bg-gray-800 rounded-lg flex items-center justify-center"><i class="fa-solid fa-${s1} ${c1} text-4xl"></i></div>
+                                    <div class="w-20 h-20 bg-gray-800/50 border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center text-2xl text-gray-500">?</div>
+                                </div>
+                                <div class="flex gap-4">
+                                    <button onclick="app.games.logic.handle(true)" class="w-20 h-20 bg-white/10 rounded-xl flex items-center justify-center hover:bg-white/20"><i class="fa-solid fa-${s2} ${c2} text-4xl"></i></button>
+                                    <button onclick="app.games.logic.handle(false)" class="w-20 h-20 bg-white/10 rounded-xl flex items-center justify-center hover:bg-white/20"><i class="fa-solid fa-${s1} ${c2} text-4xl"></i></button>
+                                    <button onclick="app.games.logic.handle(false)" class="w-20 h-20 bg-white/10 rounded-xl flex items-center justify-center hover:bg-white/20"><i class="fa-solid fa-${s2} ${c1} text-4xl"></i></button>
+                                </div>
+                             </div>
+                        `;
+                        board.innerHTML = qHtml;
+                    },
+                    handle(isCorrect) {
+                        if(isCorrect) {
+                            app.showFeedback(true);
+                            setTimeout(() => this.init(app.level), 1000);
+                        } else {
+                            app.showFeedback(false);
+                            setTimeout(() => this.init(app.level), 1000);
+                        }
+                    }
+                },
+
+                // 4. SPATIAL
+                spatial: {
+                    init(level) {
+                        const board = document.getElementById('game-board');
+                        const icons = ['plane', 'key', 'feather', 'fish', 'car-side', 'ghost', 'robot', 'dragon'];
+                        const icon = icons[Math.floor(Math.random() * icons.length)];
+                        board.innerHTML = `
+                            <div class="flex flex-col items-center gap-8">
+                                <div class="relative">
+                                    <div class="w-32 h-32 bg-emerald-500/10 rounded-full flex items-center justify-center border-2 border-emerald-500/30">
+                                        <i class="fa-solid fa-${icon} text-6xl text-emerald-400"></i>
+                                    </div>
+                                    <div class="absolute -right-4 top-1/2 -translate-y-1/2 bg-gray-800 p-2 rounded-full border border-gray-600">
+                                        <i class="fa-solid fa-rotate-right text-white"></i>
+                                    </div>
+                                </div>
+                                <p class="text-xl">Bu şekli saat yönünde çevirirsen hangisi olur?</p>
+                                <div class="flex gap-6"></div>
+                            </div>
+                        `;
+                        const optsDiv = board.querySelector('.flex.gap-6');
+                        const correctRot = 90;
+                        const wrongRot = 270;
+                        const btn1 = this.createBtn(icon, correctRot, true);
+                        const btn2 = this.createBtn(icon, wrongRot, false);
+                        const btn3 = this.createBtn(icon, 180, false);
+                        const all = [btn1, btn2, btn3].sort(() => Math.random() - 0.5);
+                        all.forEach(b => optsDiv.appendChild(b));
+                    },
+                    createBtn(icon, rot, correct) {
+                        const b = document.createElement('button');
+                        b.className = "w-24 h-24 bg-gray-800 rounded-xl border border-gray-700 hover:border-emerald-400 hover:bg-gray-700 flex items-center justify-center transition hover:-translate-y-1";
+                        b.innerHTML = `<i class="fa-solid fa-${icon} text-4xl text-gray-300" style="transform: rotate(${rot}deg)"></i>`;
+                        b.onclick = () => {
+                            if(correct) {
+                                app.showFeedback(true, "MÜKEMMEL GÖRÜŞ!");
+                                setTimeout(() => this.init(app.level), 1000);
+                            } else {
+                                app.showFeedback(false);
+                            }
+                        };
+                        return b;
+                    }
+                },
+
+                // 5. ATTENTION
+                attention: {
+                    init(level) {
+                        const board = document.getElementById('game-board');
+                        const data = [
+                            {t: 'KIRMIZI', c: 'text-red-500', h: 'border-red-500'},
+                            {t: 'MAVİ', c: 'text-blue-500', h: 'border-blue-500'},
+                            {t: 'YEŞİL', c: 'text-green-500', h: 'border-green-500'},
+                            {t: 'SARI', c: 'text-yellow-400', h: 'border-yellow-400'},
+                        ];
+                        const textObj = data[Math.floor(Math.random()*data.length)];
+                        const colorObj = data[Math.floor(Math.random()*data.length)];
+                        board.innerHTML = `
+                             <div class="flex flex-col items-center gap-12 w-full">
+                                <div class="text-center space-y-2">
+                                    <p class="text-gray-400 text-sm uppercase">DİKKAT!</p>
+                                    <h2 class="text-2xl font-bold">Yazının <span class="text-white underline decoration-wavy decoration-red-500">RENGİ</span> ne?</h2>
+                                </div>
+                                <div class="text-7xl font-black tracking-widest ${colorObj.c} drop-shadow-2xl scale-125 transition-all">${textObj.t}</div>
+                                <div class="grid grid-cols-2 gap-4 w-full max-w-sm">
+                                    ${data.map(d => `
+                                        <button onclick="app.games.attention.check('${d.c}', '${colorObj.c}')" 
+                                            class="bg-gray-800/80 border-2 border-transparent hover:${d.h} py-4 rounded-xl font-bold text-lg text-white transition active:scale-95">
+                                            ${d.t}
+                                        </button>
+                                    `).join('')}
+                                </div>
+                             </div>
+                        `;
+                    },
+                    check(choice, actual) {
+                        if(choice === actual) {
+                            app.showFeedback(true, "SÜPER HIZ!");
+                            setTimeout(() => this.init(app.level), 800);
+                        } else {
+                            app.showFeedback(false, "ŞAŞIRTMAYA GELME!");
+                            setTimeout(() => this.init(app.level), 1200);
+                        }
+                    }
+                },
+
+                // 6. ROBOTIC CODING (NEW)
+                coding: {
+                    gridSize: 5,
+                    robot: {x:0, y:0},
+                    target: {x:4, y:4},
+                    obstacles: [],
+                    queue: [],
+                    
+                    init(level) {
+                        const board = document.getElementById('game-board');
+                        this.queue = [];
+                        this.gridSize = 5;
+                        this.robot = {x:0, y:0};
+                        
+                        // Setup Level Objects
+                        let obsCount = Math.floor(level / 2);
+                        if(obsCount > 5) obsCount = 5;
+                        this.obstacles = [];
+                        
+                        // Random Target not on 0,0
+                        do {
+                            this.target = {x: Math.floor(Math.random()*this.gridSize), y: Math.floor(Math.random()*this.gridSize)};
+                        } while(this.target.x === 0 && this.target.y === 0);
+
+                        // Random Obstacles
+                        while(this.obstacles.length < obsCount) {
+                            let obs = {x: Math.floor(Math.random()*this.gridSize), y: Math.floor(Math.random()*this.gridSize)};
+                            // Check collision with start, target, or other obstacles
+                            let clean = true;
+                            if(obs.x === 0 && obs.y === 0) clean = false;
+                            if(obs.x === this.target.x && obs.y === this.target.y) clean = false;
+                            this.obstacles.forEach(o => { if(o.x === obs.x && o.y === obs.y) clean = false; });
+                            if(clean) this.obstacles.push(obs);
+                        }
+
+                        this.render(board);
+                    },
+
+                    render(board) {
+                        board.innerHTML = `
+                            <div class="flex flex-col md:flex-row gap-8 items-start justify-center w-full">
+                                <!-- Grid -->
+                                <div class="grid grid-cols-5 gap-1 bg-gray-800 p-2 rounded-xl shadow-2xl border border-gray-700" id="coding-grid">
+                                    <!-- Cells Injected via Loop -->
+                                </div>
+
+                                <!-- Control Panel -->
+                                <div class="flex flex-col gap-4 w-full md:w-48">
+                                    <div class="bg-black/20 p-3 rounded-xl min-h-[60px] flex flex-wrap gap-2 items-center justify-start border border-white/5" id="command-queue">
+                                        <span class="text-xs text-gray-500 w-full text-center" id="empty-msg">Komutları Buraya Ekle</span>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-3 gap-2">
+                                        <div class="col-span-3 text-center text-xs text-gray-400">YÖNLENDİRME</div>
+                                        <button onclick="app.games.coding.addCmd('up')" class="bg-gray-700 hover:bg-cyan-600 p-3 rounded-lg"><i class="fa-solid fa-arrow-up"></i></button>
+                                        <button onclick="app.games.coding.addCmd('left')" class="bg-gray-700 hover:bg-cyan-600 p-3 rounded-lg"><i class="fa-solid fa-arrow-left"></i></button>
+                                        <button onclick="app.games.coding.addCmd('right')" class="bg-gray-700 hover:bg-cyan-600 p-3 rounded-lg"><i class="fa-solid fa-arrow-right"></i></button>
+                                        <button onclick="app.games.coding.addCmd('down')" class="bg-gray-700 hover:bg-cyan-600 p-3 rounded-lg"><i class="fa-solid fa-arrow-down"></i></button>
+                                    </div>
+                                    
+                                    <div class="flex gap-2 mt-2">
+                                        <button onclick="app.games.coding.undo()" class="flex-1 bg-red-500/20 text-red-300 hover:bg-red-500/40 py-2 rounded-lg text-sm border border-red-500/30">Sil</button>
+                                        <button onclick="app.games.coding.run()" class="flex-[2] bg-green-600 hover:bg-green-500 text-white py-2 rounded-lg font-bold shadow-lg shadow-green-500/20">ÇALIŞTIR ▶</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        this.drawGrid();
+                    },
+
+                    drawGrid() {
+                        const gridEl = document.getElementById('coding-grid');
+                        gridEl.innerHTML = '';
+                        for(let y=0; y<this.gridSize; y++) {
+                            for(let x=0; x<this.gridSize; x++) {
+                                const cell = document.createElement('div');
+                                cell.className = 'w-10 h-10 md:w-12 md:h-12 bg-gray-700/50 rounded flex items-center justify-center coding-grid-cell';
+                                
+                                // Draw Objects
+                                if(x === this.robot.x && y === this.robot.y) {
+                                    cell.innerHTML = '<i class="fa-solid fa-robot text-cyan-400 text-xl md:text-2xl robot-avatar"></i>';
+                                    cell.classList.add('bg-gray-600');
+                                } else if (x === this.target.x && y === this.target.y) {
+                                    cell.innerHTML = '<i class="fa-solid fa-flag-checkered text-yellow-400 text-xl animate-bounce"></i>';
+                                }
+                                
+                                this.obstacles.forEach(o => {
+                                    if(o.x === x && o.y === y) {
+                                        cell.innerHTML = '<i class="fa-solid fa-ban text-red-500/50 text-xl"></i>';
+                                        cell.classList.add('bg-red-900/20');
+                                    }
+                                });
+
+                                gridEl.appendChild(cell);
+                            }
+                        }
+                    },
+
+                    addCmd(dir) {
+                        if(this.queue.length < 10) {
+                            this.queue.push(dir);
+                            this.updateQueueUI();
+                        }
+                    },
+
+                    undo() {
+                        this.queue.pop();
+                        this.updateQueueUI();
+                    },
+
+                    updateQueueUI() {
+                        const qEl = document.getElementById('command-queue');
+                        if(this.queue.length === 0) {
+                            qEl.innerHTML = '<span class="text-xs text-gray-500 w-full text-center">Komutları Buraya Ekle</span>';
+                            return;
+                        }
+                        
+                        const iconMap = {
+                            'up': 'fa-arrow-up', 'down': 'fa-arrow-down', 'left': 'fa-arrow-left', 'right': 'fa-arrow-right'
+                        };
+                        
+                        qEl.innerHTML = this.queue.map(cmd => 
+                            `<div class="w-6 h-6 bg-cyan-600 rounded flex items-center justify-center text-xs"><i class="fa-solid ${iconMap[cmd]}"></i></div>`
+                        ).join('');
+                    },
+
+                    async run() {
+                        if(this.queue.length === 0) return;
+                        
+                        // Execute loop
+                        for(let i=0; i<this.queue.length; i++) {
+                            const cmd = this.queue[i];
+                            
+                            // Move Robot Logic
+                            if(cmd === 'up' && this.robot.y > 0) this.robot.y--;
+                            else if(cmd === 'down' && this.robot.y < this.gridSize-1) this.robot.y++;
+                            else if(cmd === 'left' && this.robot.x > 0) this.robot.x--;
+                            else if(cmd === 'right' && this.robot.x < this.gridSize-1) this.robot.x++;
+                            
+                            this.drawGrid(); // Re-render robot position
+                            
+                            // Check Collision (Obstacle)
+                            let crash = false;
+                            this.obstacles.forEach(o => { if(o.x === this.robot.x && o.y === this.robot.y) crash = true; });
+                            
+                            if(crash) {
+                                app.showFeedback(false, "ENGELE ÇARPTIN!");
+                                setTimeout(() => this.init(app.level), 1500);
+                                return;
+                            }
+                            
+                            // Check Win
+                            if(this.robot.x === this.target.x && this.robot.y === this.target.y) {
+                                await new Promise(r => setTimeout(r, 200)); // Small delay to see win
+                                app.showFeedback(true, "HEDEFE ULAŞTIN!");
+                                setTimeout(() => this.init(app.level), 1500);
+                                return;
+                            }
+
+                            await new Promise(r => setTimeout(r, 500)); // Step delay
+                        }
+                        
+                        // If loop ends and not at target
+                        app.showFeedback(false, "YOL BİTTİ!");
+                        setTimeout(() => this.init(app.level), 1500);
+                    }
+                }
+            }
+        };
+
+        window.onload = () => app.init();
+    </script>
+</body>
+</html>
+
+
